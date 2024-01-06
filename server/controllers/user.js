@@ -6,6 +6,8 @@ const {
 } = require('../middlewares/jwt');
 
 const jwt = require('jsonwebtoken');
+const sendMail = require('../utils/sendmail');
+const crypto = require('crypto');
 
 const register = asyncHandler(async (req, res) => {
   const { email, password, firstname, lastname } = req.body;
@@ -107,10 +109,63 @@ const logout = asyncHandler(async (req, res) => {
   });
 });
 
+// client send email -> check mail -> send reset password link to email
+// -> client click link -> send api with token -> check token and reset password
+
+const forgotPassword = asyncHandler(async (req, res) => {
+  // create password change
+  const { email } = req.query;
+  if (!email) throw new Error('Missing email');
+  const user = await User.findOne({ email });
+  if (!user) throw new Error('User not found');
+  const resetToken = user.createPasswordChangeToken();
+  await user.save();
+
+  // send mail
+  const html = `Xin vui long click vao link duoi day de thay doi mat khau cua ban. Link nay se het han sau 15 phut. <a href = ${process.env.URL_SERVER}/api/user/resetpassword/${resetToken}>Click here</a>`;
+
+  const data = {
+    email,
+    html,
+  };
+
+  console.log(data);
+  const rs = await sendMail(data);
+  return res.status(200).json({
+    success: true,
+    rs,
+  });
+});
+
+const resetPassword = asyncHandler(async (req, res) => {
+  const { password, token } = req.body;
+  if (!password || !token) throw new Error('Missing inputs');
+  const passwordResetToken = crypto
+    .createHash('sha256')
+    .update(token)
+    .digest('hex');
+  const user = await User.findOne({
+    passwordResetToken,
+    passwordResetExpires: { $gt: Date.now() },
+  });
+  if (!user) throw new Error('Invalid reset token');
+  user.password = password;
+  user.passwordResetToken = undefined;
+  user.passwordChangedAt = Date.now();
+  user.passwordResetExpires = undefined;
+  await user.save();
+  return res.status(200).json({
+    success: user ? true : false,
+    mes: user ? 'Update password' : 'Something went wrong',
+  });
+});
+
 module.exports = {
   register,
   login,
   getCurrent,
   refreshAccessToken,
   logout,
+  forgotPassword,
+  resetPassword,
 };
