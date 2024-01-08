@@ -171,7 +171,7 @@ const getUsers = asyncHandler(async (req, res) => {
 
 const deleteUser = asyncHandler(async (req, res) => {
   const { _id } = req.query;
-  if (!_id) throw new Error('Missing inputs');
+  if (!_id) throw new Error('Missing input params');
   const user = await User.findByIdAndDelete(_id);
   return res.status(200).json({
     success: user ? true : false,
