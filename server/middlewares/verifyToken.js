@@ -27,13 +27,13 @@ const isAdmin = asyncHandler(async (req, res, next) => {
   if (role !== 'admin') {
     return res.status(401).json({
       success: false,
-      mes: 'REQUIRE ADMIN ROLE'
-    })
+      mes: 'REQUIRE ADMIN ROLE',
+    });
   }
   next();
-})
+});
 
 module.exports = {
   verifyAccessToken,
-  isAdmin
+  isAdmin,
 };
